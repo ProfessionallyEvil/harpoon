@@ -1,0 +1,13 @@
+{
+  "Image":"ubuntu",
+  "Cmd":["/bin/sh"],
+  "DetachKeys":"Ctrl-p,Ctrl-q",
+  "OpenStdin":true,
+  "Mounts":[
+    {
+      "Type":"bind",
+      "Source":"/etc/",
+      "Target":"/host_etc"
+    }
+  ]
+}
