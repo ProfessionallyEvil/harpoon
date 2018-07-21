@@ -1,0 +1,1 @@
+curl -XPOST --unix-socket $DOCKER_SOCK_PATH http://localhost/containers/$DOCKER_CONTAINER_ID/start
