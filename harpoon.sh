@@ -83,7 +83,7 @@ set -- "${POSITIONAL[@]}" # restore positional paramters
 
 help () {
 	cat << "EOF" 
-Am I Being Contained - AIBC
+Harpoon
 
                           ,   ,
     ~~~~~~~~~~~~~~~~~~~~~~~"o"~~~~
