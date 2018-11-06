@@ -1,4 +1,4 @@
-# am-i-being-contained
+# Harpoon
 
 ```
                           ,   ,
@@ -13,9 +13,6 @@
     \/ \/    -.____ ____.-
 ```
 
-A collection post-exploitation scripts and techniques intended to be used once you've gotten a shell in some clever manner.
+A bash command-line too to help fingerprint and compromise containers. 
 
-* Fingerprinting container tech. 
-* Escaping containers.
-
-### Check the [Wiki](https://github.com/ProfessionallyEvil/am-i-being-contained/wiki)
+Currently the tool is focused on exploiting poorly configured docker containers aiming for the docker socket, and attacking Kubernetes clusters.
