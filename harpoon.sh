@@ -185,7 +185,7 @@ Upgrade: tcp
 
 EOM
 
-	socat - UNIX-CONNECT:$DOCKER_SOCK_PATH <<< $DOCKER_CONNECT_HEADERS
+	echo $DOCKER_CONNECT_HEADERS | socat - UNIX-CONNECT:$DOCKER_SOCK_PATH
 }
 
 check_cgroup () {
