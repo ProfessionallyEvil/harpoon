@@ -93,8 +93,10 @@ func (di dockerInfo) findDockerApiVer() string {
   } else if di.dockerSockPath != nil {
     if len(di.dockerSockPath) >= 1 {
       // just take the first value
-      var dockerSocket string = di.dockerSockPath[0]
-      querySocket(dockerSocket, "GET", "/version", "")
+      fmt.Println("[+] Docker socket: " + di.dockerSockPath[1])
+      var dockerSocket string = di.dockerSockPath[1]
+      verInfoStr := querySocket(dockerSocket, "GET", "/version", "")
+      return verInfoStr
     }
   }
   return verInfo.String()
@@ -135,7 +137,7 @@ func main() {
         /       ___      __\ o
        / _         _\    \__o 
       / / |              X  |
-     / /   \             /
+     / /   \               /
     / _ \   \             /
     \/ \/    -.____ ____.-
 
