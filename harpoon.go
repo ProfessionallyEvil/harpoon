@@ -58,7 +58,7 @@ func querySocket(socketPath string, method string, path string, payload string) 
 
 func (di dockerInfo) toString() string {
   var sb strings.Builder
-  sb.WriteString(fmt.Sprintf("\thas_docker: %v\n", di.hasDocker))
+  //sb.WriteString(fmt.Sprintf("\thas_docker: %v\n", di.hasDocker))
   sb.WriteString(fmt.Sprintf("\tsocket_paths: %v\n", di.dockerSockPath))
   sb.WriteString(fmt.Sprintf("\tdocker_ver_info: %v\n", di.dockerApiVer))
   sb.WriteString(fmt.Sprintf("\tin_docker_group: %v\n", di.dockerUserGroup))
@@ -85,9 +85,9 @@ func (di dockerInfo) findDockerApiVer() string {
   // curl -s -XGET --unix-socket /run/docker.sock http://localhost/version 2>&1
   var verInfo bytes.Buffer
   hasDocker, _ := execCmd("which docker")
-  fmt.Println(hasDocker)
-  di.hasDocker = false
+  //fmt.Println(hasDocker.String())
   if hasDocker.String() != "" {
+    fmt.Print("[+] Found docker bin: " + hasDocker.String())
     di.hasDocker = true
     verInfo, _ = execCmd("docker version")
   } else if di.dockerSockPath != nil {
@@ -131,7 +131,7 @@ func main() {
                           ,   ,
     ~~~~~~~~~~~~~~~~~~~~~~~"o"~~~~
             ____________     o
-       _--            --_ o
+         _--            --_ o
         /       ___      __\ o
        / _         _\    \__o 
       / / |              X  |
@@ -174,7 +174,8 @@ Options:
     }
     dockerInfo.dockerUserGroup = dockerInfo.isDockerUser()
     r := strings.NewReplacer("\n", "\n\t\t")
-    dockerInfo.dockerApiVer = fmt.Sprintf("\n\t\t%s\n", r.Replace(dockerInfo.findDockerApiVer()))
+    dockerApiInfo := dockerInfo.findDockerApiVer()
+    dockerInfo.dockerApiVer = fmt.Sprintf("\n\t\t%s\n", r.Replace(dockerApiInfo))
     // display found info
     fmt.Printf("[+] Docker info found:\n")
     fmt.Println(dockerInfo.toString())
