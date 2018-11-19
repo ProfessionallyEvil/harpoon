@@ -3,10 +3,11 @@ package main
 import (
   "bytes"
   "context"
-  "encoding/json"
-  "flag"
+  //"encoding/json"
   "fmt"
+  "github.com/urfave/cli"
   "io/ioutil"
+  "log"
   "net"
   "net/http"
   "os"
@@ -127,8 +128,50 @@ func startContainer(socketPath string, containerId string) string {
   return res
 }
 
+func runChecks(mask uint8) {
+  runAll := false
+  if mask == 0xF0 {
+    runAll = true
+    mask = 0x80
+    // run all the checks
+  }
+  if mask == 0x80 {
+    dockerInfo := dockerInfo{}
+    if runAll {
+      //modify the mask
+      mask = 0x40
+    }
+    socks := dockerInfo.findDockerSocket()
+    if socks != nil {
+      dockerInfo.dockerSockPath = socks
+    }
+    dockerInfo.dockerUserGroup = dockerInfo.isDockerUser()
+    r := strings.NewReplacer("\n", "\n\t\t")
+    dockerApiInfo := dockerInfo.findDockerApiVer()
+    dockerInfo.dockerApiVer = fmt.Sprintf("\n\t\t%s\n", r.Replace(dockerApiInfo))
+    // display found info
+    fmt.Printf("[+] Docker info found:\n")
+    fmt.Printf("%s", dockerInfo.toString())
+  }
+  if mask == 0x40 {
+    if runAll {
+      mask = 0x20
+    }
+    fmt.Println("[-] Not implemented")
+  }
+  if mask == 0x20 {
+    if runAll {
+      mask = 0x10
+    }
+    fmt.Println("[-] Not implemented")
+  }
+  if mask == 0x10 {
+    fmt.Println("[-] Not implemented")
+  }
+}
+
 func main() {
-  var help string = `Harpoon
+  var help string = `Containerization recon and exploitation tool.
 
                           ,   ,
     ~~~~~~~~~~~~~~~~~~~~~~~"o"~~~~
@@ -141,102 +184,166 @@ func main() {
     / _ \   \             /
     \/ \/    -.____ ____.-
 
-Containerization recon and exploitation tool.
-Usage: harpoon [options]
-
-Options:
-  Todo: write this help...
 `
 
-  // set up command line opts
-  findCommand := flag.NewFlagSet("fingerprint", flag.ExitOnError)
-  createCommand := flag.NewFlagSet("create", flag.ExitOnError)
-  socketFlag := createCommand.String("sock", "/run/docker.sock", "The path to the docker socket.")
-  mountFlag := createCommand.String("mount", "/:/mnt", "What file to from the host to mount and where to mount it.")
-  startCommand := flag.NewFlagSet("start", flag.ExitOnError)
-  containerIdStartFlag := startCommand.String("container_id", "", "The id of the container to try and execute commands in.")
-  execCommand := flag.NewFlagSet("exec", flag.ExitOnError)
-  containerIdFlag := execCommand.String("container_id", "", "The id of the container to try and execute commands in.")
-  commandFlag := execCommand.String("cmd", "", "The command to execute inside of the container.")
+  // Utilize cli package for command line interface, rather than rolling our own messy one.
+  app := cli.NewApp()
+  app.Name = "harpoon"
+  app.Usage = help
 
-  dockerInfo := dockerInfo{}
-  //kubernetesInfo := kubernetesInfo{}
-
-  if len(os.Args) == 1 {
-    fmt.Println(help)
-    os.Exit(1)
+  // Define subcommands
+  app.Commands = []cli.Command{
+    {
+      Name:    "fingerprint",
+      Aliases: []string{"fp"},
+      Usage:   "fingerprint the system for various container tech and settings",
+      Flags: []cli.Flag{
+        cli.BoolFlag{
+          Name:  "all, a",
+          Usage: "run all checks",
+        },
+        cli.BoolFlag{
+          Name:  "docker, d",
+          Usage: "run only the docker checks",
+        },
+        cli.BoolFlag{
+          Name:  "kube, k",
+          Usage: "run only the kubernetes checks",
+        },
+        cli.BoolFlag{
+          Name:  "lxc, l",
+          Usage: "run only the lxc checks",
+        },
+        cli.BoolFlag{
+          Name:  "discover, D",
+          Usage: "attempt to discover what container tech, if any, is in place",
+        },
+      },
+      Action: func(c *cli.Context) error {
+        //fmt.Println(c.Bool("all"))
+        var flagMask uint8 = 0x0 // 00000000
+        if c.Bool("all") {
+          // set the lower 4 bits to 1
+          // flagMask = flagMask & 0xF8
+          runChecks(0xF0)
+          return nil
+        }
+        if c.Bool("docker") {
+          // set the fist bit of the mask
+          flagMask = flagMask | 0x80
+          runChecks(flagMask)
+        }
+        if c.Bool("kube") {
+          // set the second bit of the mask
+          flagMask = flagMask | 0x40
+        }
+        if c.Bool("lxc") {
+          flagMask = flagMask | 0x20
+        }
+        if c.Bool("discover") {
+          flagMask = flagMask | 0x10
+        }
+        return nil
+      },
+    },
   }
 
-  switch os.Args[1] {
-  case "fingerprint":
-    findCommand.Parse(os.Args[2:])
-    socks := dockerInfo.findDockerSocket()
-    if socks != nil {
-      dockerInfo.dockerSockPath = socks
-    }
-    dockerInfo.dockerUserGroup = dockerInfo.isDockerUser()
-    r := strings.NewReplacer("\n", "\n\t\t")
-    dockerApiInfo := dockerInfo.findDockerApiVer()
-    dockerInfo.dockerApiVer = fmt.Sprintf("\n\t\t%s\n", r.Replace(dockerApiInfo))
-    // display found info
-    fmt.Printf("[+] Docker info found:\n")
-    fmt.Println(dockerInfo.toString())
-  case "create":
-    createCommand.Parse(os.Args[2:])
-    if createCommand.Parsed() {
-      if *mountFlag == "" {
-        fmt.Println(help)
-        return
-      }
-      if *socketFlag == "" {
-        fmt.Println(help)
-        return
-      }
-      res := createContainer(*socketFlag, *mountFlag)
-      fmt.Println(res)
-    }
-  case "start":
-    startCommand.Parse(os.Args[2:])
-    if startCommand.Parsed() {
-      if *socketFlag == "" {
-        fmt.Println(help)
-        return
-      }
-      if *containerIdStartFlag == "" {
-        fmt.Println(help)
-      }
-      res := startContainer(*socketFlag, *containerIdStartFlag)
-      fmt.Println(res)
-    }
-  case "exec":
-    execCommand.Parse(os.Args[2:])
-    if execCommand.Parsed() {
-      if *socketFlag == "" {
-        fmt.Println(help)
-        return
-      }
-      if *containerIdFlag == "" {
-        fmt.Println(help)
-        return
-      }
-      if *commandFlag == "" {
-        fmt.Println(help)
-        return
-      }
-      // set up an exec
-      cmdStr := strings.Trim(strings.Join(strings.Fields(fmt.Sprintf(*commandFlag)), "\",\""), "[]")
-      payload := `{"AttachStdin": false,"AttachStdout": true,"AttachStderr": true,"DetachKeys": "ctrl-p,ctrl-q","Tty": false,"Cmd":["` + cmdStr + `"]}`
-      res := querySocket(*socketFlag, "POST", "/containers/"+*containerIdFlag+"/exec", payload)
-      fmt.Println(res)
-      byt := []byte(res)
-      var dat map[string]interface{}
-      if err := json.Unmarshal(byt, &dat); err != nil {
-        panic(err)
-      }
-      fmt.Println(dat["Id"])
-      payload = `{"Detach": false, "Tty": false}`
-      res = querySocket(*socketFlag, "POST", "/exec/"+dat["Id"].(string)+"/start", payload)
-      fmt.Println(res)
-    }
+  err := app.Run(os.Args)
+  if err != nil {
+    log.Fatal(err)
   }
+
+  /*
+     // set up command line opts
+     findCommand := flag.NewFlagSet("fingerprint", flag.ExitOnError)
+     createCommand := flag.NewFlagSet("create", flag.ExitOnError)
+     socketFlag := createCommand.String("sock", "/run/docker.sock", "The path to the docker socket.")
+     mountFlag := createCommand.String("mount", "/:/mnt", "What file to from the host to mount and where to mount it.")
+     startCommand := flag.NewFlagSet("start", flag.ExitOnError)
+     containerIdStartFlag := startCommand.String("container_id", "", "The id of the container to try and execute commands in.")
+     execCommand := flag.NewFlagSet("exec", flag.ExitOnError)
+     containerIdFlag := execCommand.String("container_id", "", "The id of the container to try and execute commands in.")
+     commandFlag := execCommand.String("cmd", "", "The command to execute inside of the container.")
+
+     dockerInfo := dockerInfo{}
+     //kubernetesInfo := kubernetesInfo{}
+
+     if len(os.Args) == 1 {
+       fmt.Println(help)
+       os.Exit(1)
+     }
+
+     switch os.Args[1] {
+     case "fingerprint":
+       findCommand.Parse(os.Args[2:])
+       socks := dockerInfo.findDockerSocket()
+       if socks != nil {
+         dockerInfo.dockerSockPath = socks
+       }
+       dockerInfo.dockerUserGroup = dockerInfo.isDockerUser()
+       r := strings.NewReplacer("\n", "\n\t\t")
+       dockerApiInfo := dockerInfo.findDockerApiVer()
+       dockerInfo.dockerApiVer = fmt.Sprintf("\n\t\t%s\n", r.Replace(dockerApiInfo))
+       // display found info
+       fmt.Printf("[+] Docker info found:\n")
+       fmt.Println(dockerInfo.toString())
+     case "create":
+       createCommand.Parse(os.Args[2:])
+       if createCommand.Parsed() {
+         if *mountFlag == "" {
+           fmt.Println(help)
+           return
+         }
+         if *socketFlag == "" {
+           fmt.Println(help)
+           return
+         }
+         res := createContainer(*socketFlag, *mountFlag)
+         fmt.Println(res)
+       }
+     case "start":
+       startCommand.Parse(os.Args[2:])
+       if startCommand.Parsed() {
+         if *socketFlag == "" {
+           fmt.Println(help)
+           return
+         }
+         if *containerIdStartFlag == "" {
+           fmt.Println(help)
+         }
+         res := startContainer(*socketFlag, *containerIdStartFlag)
+         fmt.Println(res)
+       }
+     case "exec":
+       execCommand.Parse(os.Args[2:])
+       if execCommand.Parsed() {
+         if *socketFlag == "" {
+           fmt.Println(help)
+           return
+         }
+         if *containerIdFlag == "" {
+           fmt.Println(help)
+           return
+         }
+         if *commandFlag == "" {
+           fmt.Println(help)
+           return
+         }
+         // set up an exec
+         cmdStr := strings.Trim(strings.Join(strings.Fields(fmt.Sprintf(*commandFlag)), "\",\""), "[]")
+         payload := `{"AttachStdin": false,"AttachStdout": true,"AttachStderr": true,"DetachKeys": "ctrl-p,ctrl-q","Tty": false,"Cmd":["` + cmdStr + `"]}`
+         res := querySocket(*socketFlag, "POST", "/containers/"+*containerIdFlag+"/exec", payload)
+         fmt.Println(res)
+         byt := []byte(res)
+         var dat map[string]interface{}
+         if err := json.Unmarshal(byt, &dat); err != nil {
+           panic(err)
+         }
+         fmt.Println(dat["Id"])
+         payload = `{"Detach": false, "Tty": false}`
+         res = querySocket(*socketFlag, "POST", "/exec/"+dat["Id"].(string)+"/start", payload)
+         fmt.Println(res)
+       }
+     }
+  */
 }
