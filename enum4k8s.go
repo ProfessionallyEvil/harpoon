@@ -9,6 +9,7 @@ import (
   "flag"
   "crypto/tls"
   "strconv"
+  "strings"
 )
 
 func get(url string, headers *map[string]string) (*http.Response, error) {
@@ -75,16 +76,16 @@ func fmtJsonMap(m map[string]interface{}, out *string) {
 
 func getPaths(
   url string,
-  paths *map[string]interface{},
+  paths *[]string,
   headers *map[string]string,
 ) (map[string]int ,error) {
   statuses := make(map[string]int)
-  for k, _ := range *paths {
-    res, err := get(url + k, headers)
+  for p := range *paths {
+    res, err := get(url + (*paths)[p], headers)
     if (err != nil) {
       return nil, err
     }
-    statuses[k] = res.StatusCode
+    statuses[(*paths)[p]] = res.StatusCode
   }
   return statuses, nil
 }
@@ -99,6 +100,7 @@ func main() {
 
   urlPtr := flag.String("url", "https://kubernetes.default.svc", "the url of the k8s api server")
   jwtPtr := flag.String("jwt", "", "the token to use for authorization")
+  nsPtr := flag.String("ns", "default", "the namespace to try and enumerate")
   flag.Parse()
 
   headers := map[string]string{
@@ -131,12 +133,22 @@ func main() {
     res, err = getJson(*urlPtr + "/openapi/v2", &jsonData, &headers)
     panicOnErr(err)
     if (res.StatusCode == 200) {
+      fmt.Println("[+] got /openapi/v2... attempting to enumerate access")
+      fmt.Println("[+] Using namespace: " + *nsPtr)
       //var out string
       jsonMap := jsonData.(map[string]interface{})
       pathsMap := jsonMap["paths"].(map[string]interface{})
+      pathsSlice := make([]string, 0)
       fmt.Println("[!] API Paths")
-
-      res, err := getPaths(*urlPtr, &pathsMap, &headers)
+      // set the namespace in each path where {namespace} is present
+      // Ideally we should extract the namespace from the token if it is supplied
+      // We can add this later.
+      for k, _ := range pathsMap {
+        // replace {namespace} with -ns value
+        // TODO retool this to go into a slice!
+        pathsSlice = append(pathsSlice, strings.Replace(k, "{namespace}", *nsPtr, 1))
+      }
+      res, err := getPaths(*urlPtr, &pathsSlice, &headers)
       panicOnErr(err)
       for k, v := range res {
         if (v != 403) {
