@@ -33,7 +33,8 @@ func get(url string, headers *map[string]string) (*http.Response, error) {
 
 func getJson(
   url string,
-  jsonData *interface{}, headers *map[string]string,
+  jsonData *interface{},
+  headers *map[string]string,
 ) (*http.Response, error) {
   client := &http.Client{}
   req, err := http.NewRequest("GET", url, nil)
@@ -56,7 +57,7 @@ func getJson(
     return nil, err
   }
   json.Unmarshal(body, &jsonData)
-  return res, err 
+  return res, err
 }
 
 func panicOnErr(err error) {
@@ -101,12 +102,15 @@ func main() {
   urlPtr := flag.String("url", "https://kubernetes.default.svc", "the url of the k8s api server")
   jwtPtr := flag.String("jwt", "", "the token to use for authorization")
   nsPtr := flag.String("ns", "default", "the namespace to try and enumerate")
+  //dumpPtr := flag.Bool("dump", false, "Dump all the information possible")
   flag.Parse()
 
   headers := map[string]string{
     "Accept": "application/json",
   }
   if (*jwtPtr != "") {
+    *jwtPtr = strings.ReplaceAll(*jwtPtr, "\"", "")
+    //fmt.Println("Bearer " + *jwtPtr)
     headers["Authorization"] = "Bearer " + *jwtPtr
   }
 
@@ -122,13 +126,15 @@ func main() {
     fmt.Println(out)
   }
 
+  parsedPaths := false
+  var pathsEnumRes map[string]int
   res, err = getJson(*urlPtr + "/swagger.json", &jsonData, &headers)
   panicOnErr(err)
   if (res.StatusCode == 200) {
     var out string
     jsonMap := jsonData.(map[string]interface{})
     fmtJsonMap(jsonMap, &out)
-    fmt.Println("[+] got /swagger.json... attempting to enumerate access") 
+    fmt.Println("[+] got /swagger.json... attempting to enumerate access")
   } else {
     res, err = getJson(*urlPtr + "/openapi/v2", &jsonData, &headers)
     panicOnErr(err)
@@ -156,5 +162,25 @@ func main() {
         }
       }
     }
+  }
+
+  if (*dumpPtr == true) {
+    /* Try to dump the followoing:
+     * - /api/v1/namespaces/{namespace}/pods
+     * - /api/v1/namespaces/{namespace}/serviceaccounts
+     * - /api/v1/namespaces/{namespace}/secrets
+     * - /api/v1/namespaces/{namespace}/roles
+    */
+    base := "/api/v1/namespaces/" + *nsPtr
+    paths := [
+      base + "/pods",
+      base + "/serviceaccounts",
+      base + "/secrets",
+      base + "/roles"
+    ]
+
+    for p := range paths {
+      var jsonData interface{}
+      res, err := getJson(*urlPtr,
   }
 }
