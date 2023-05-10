@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "evilpod"
+spec:
+  containers:
+  - name: "evilpod"
+    image: "docker.io/kalilinux/kali-rolling"
+    command: ["sleep", "infinity"]
