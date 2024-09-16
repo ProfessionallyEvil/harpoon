@@ -18,6 +18,4 @@
     \/ \/    -.____ ____.-
 ```
 
-## A collection of tips and tricks for container and container orchestration hacking.
-
-*TODO: write documentation*
+## A collection of scripts and payloads and such for hacking containers and k8s junk
